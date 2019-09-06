@@ -1,10 +1,11 @@
 from tinydb import TinyDB, Query
+from configmodule import Config
 
 
-db = TinyDB('./db.json', default_table='bots')
+db = TinyDB(Config.DB_PATH, default_table='bots')
 
-def find_device_by_id(id):
-    d = db.get(doc_id=id)
+def find_device_by_id(bot_id):
+    d = db.get(doc_id=bot_id)
     if d:
         d['id'] = d.doc_id
     return d
@@ -40,8 +41,9 @@ def insert_device(mac, name=None):
 
     return device_id
 
-def delete_device(id):
-    db.remove(doc_ids=[id])
+def delete_device(bot_id):
+    db.remove(doc_ids=[bot_id])
 
-def set_device_name(id, name):
-    db.update({'name': name}, doc_ids=[id])
+def set_device_name(bot_id, name):
+    db.update({'name': name}, doc_ids=[bot_id])
+    

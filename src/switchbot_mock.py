@@ -1,9 +1,13 @@
 import re
 from typing import List, Dict, Any, Tuple
 
-from timer import StandardTimer, Action, BaseTimer
+from switchbot_timer import BaseTimer
 
 db = {}
+
+"""
+allows to test api without an actual switchbot available. Simply change import in app.py to use this file
+"""
 
 class Scanner(object):
 
@@ -84,5 +88,5 @@ class Bot(object):
         print("MOCK: bot.get_timers(n_timers=%d)", n_timers)
         return db[self.id]["timers"]
 
-    def encrypted(self, password:str):
+    def encrypted(self, password: str):
         print("MOCK: bot.encrypted(password=...)")

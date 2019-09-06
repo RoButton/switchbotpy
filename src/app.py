@@ -1,25 +1,23 @@
-import marshmallow as ma
+from datetime import timedelta
+from typing import Any, Dict
 
 import keyring
 from flask import Flask
 from flask.logging import create_logger
-from flask_bcrypt import Bcrypt
-
 from flask.views import MethodView
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 from flask_rest_api import Api, Blueprint, abort
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.contrib.fixers import ProxyFix
 
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
-from datetime import datetime, timedelta
-
-from timer import StandardTimer, Action
 import lookup
-
-from switchbot import Bot, Scanner
-from schema import BotListSchema, BotSchema, TimerSchema, ActionSchema, LoginSchema
-
-from typing import Dict, Any
-
 from configmodule import Config
+from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema
+from switchbot import Bot, Scanner
+from switchbot_timer import Action, StandardTimer
+from switchbot_util import ActionStatus, SwitchbotError
 
 app = Flask('Switchbot')
 app.config.from_object(Config())
@@ -27,12 +25,14 @@ app.config.from_object(Config())
 bcrypt = Bcrypt(app)
 api = Api(app)
 jwt = JWTManager(app)
+app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
+limiter = Limiter(app, key_func=get_remote_address)
 LOG = create_logger(app)
 
 def connect(bot_id: int):
     print("Connect to Bot: %s", bot_id)
     # find mac address in db
-    device = lookup.find_device_by_id(id=bot_id)
+    device = lookup.find_device_by_id(bot_id=bot_id)
 
     if device is None:
         LOG.warning("bot not found: %s", bot_id)
@@ -47,6 +47,13 @@ def connect(bot_id: int):
 
     bot.encrypted(pw)
     return bot
+
+def handle_switchbot_error(error: SwitchbotError):
+    if error.switchbot_action_status == ActionStatus.wrong_password:
+        abort(403, message="wrong or missing bot password")
+    else:
+        abort(503, message=str(error) + ": please retry")
+
 
 blbs = Blueprint(
     'bots', 'bots', url_prefix=app.config['BASE_URL'] + '/bots',
@@ -97,10 +104,13 @@ class BotAPI(MethodView):
         bot = connect(bot_id=bot_id)
 
         # communicate with bot to get settings
-        d = bot.get_settings()
+        try:
+            d = bot.get_settings()
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
+
 
         LOG.debug("bot settings: %s", d)
-        # TODO [nku] maybe handle error
 
         d["id"] = bot.id
         d["mac"] = bot.mac
@@ -117,34 +127,41 @@ class BotAPI(MethodView):
         LOG.debug(" data: %s", update_data)
 
         if 'password' in update_data:
-            device = lookup.find_device_by_id(id=bot_id)
+            device = lookup.find_device_by_id(bot_id=bot_id)
             keyring.set_password('switchbot', device['mac'], update_data['password'])
         
         bot = connect(bot_id=bot_id)
 
-        if 'name' in update_data:
-            lookup.set_device_name(id=bot_id, name=update_data['name'])
+        try:
+            if 'name' in update_data:
+                lookup.set_device_name(bot_id=bot_id, name=update_data['name'])
 
-        if 'hold_seconds' in update_data:
-            bot.set_hold_time(sec= update_data['hold_seconds'])
-        
-        if ('dual_state_mode' in update_data) or ('inverse_direction' in update_data):
+            if 'hold_seconds' in update_data:
+                bot.set_hold_time(sec= update_data['hold_seconds'])
             
-            if not ('dual_state_mode' in update_data and 'inverse_direction' in update_data): 
-                # if not both are set, need to query the bot for the current setting
-                d = self.get(bot_id=bot_id)
-                dual_state = d["dual_state_mode"]
-                inverse_direction = d["inverse_direction"]
-            
-            if 'dual_state_mode' in update_data:
-                dual_state = update_data['dual_state_mode']
+            if ('dual_state_mode' in update_data) or ('inverse_direction' in update_data):
+                
+                if not ('dual_state_mode' in update_data and 'inverse_direction' in update_data): 
+                    # if not both are set, need to query the bot for the current setting
+                    d = self.get(bot_id=bot_id)
+                    dual_state = d["dual_state_mode"]
+                    inverse_direction = d["inverse_direction"]
+                
+                if 'dual_state_mode' in update_data:
+                    dual_state = update_data['dual_state_mode']
 
-            if 'inverse_direction' in update_data:
-                inverse_direction = update_data['inverse_direction']
+                if 'inverse_direction' in update_data:
+                    inverse_direction = update_data['inverse_direction']
+            
+                bot.set_mode(dual_state=dual_state, inverse=inverse_direction)
+
+            
+            d  = self.get(bot_id=bot_id)
+
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
         
-            bot.set_mode(dual_state=dual_state, inverse=inverse_direction)
-        
-        return self.get(bot_id=bot_id)
+        return d
 
 
 blts = Blueprint(
@@ -158,12 +175,15 @@ class TimerListAPI(MethodView):
     @jwt_required
     @blts.response(TimerSchema(many=True))
     def get(self, bot_id: int):
-        LOG.info("GET: bot/%d/timers", bot_id)
         bot = connect(bot_id=bot_id)
         result = []
-        timers = bot.get_timers()
+        try:
+            timers = bot.get_timers()
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
+
         for i, timer in enumerate(timers):
-            t = timer.to_dict(id=i)
+            t = timer.to_dict(timer_id=i)
             result.append(t)
         return result
 
@@ -172,27 +192,30 @@ class TimerListAPI(MethodView):
     @blts.response(TimerSchema, code=201)
     def post(self, new_data: Dict[str, Any], bot_id: int):
         """Add a new timer"""
-        LOG.info("POST: bot/%d/timers", bot_id)
         LOG.debug(" data: %s", new_data)
 
         bot = connect(bot_id=bot_id)
+        try:
+            timers = bot.get_timers()
+        
+            n_timer = len(timers)
 
-        timers = bot.get_timers()
-        n_timer = len(timers)
+            if n_timer >= 5:
+                abort(400, message="no support for more than 5 timers")
 
-        if n_timer >= 5:
-            abort(400, message="no support for more than 5 timers")
+            timer = StandardTimer(action=Action[new_data["action"]],
+                                    enabled=new_data["enabled"], 
+                                    weekdays=new_data["weekdays"],
+                                    hour=new_data["hour"],
+                                    min=new_data["min"])
 
-        timer = StandardTimer(action=Action[new_data["action"]],
-                                enabled=new_data["enabled"], 
-                                weekdays=new_data["weekdays"],
-                                hour=new_data["hour"],
-                                min=new_data["min"])
+            timers.append(timer)
+            bot.set_timers(timers)
 
-        timers.append(timer)
-        bot.set_timers(timers)
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
 
-        t = timer.to_dict(id=n_timer)
+        t = timer.to_dict(timer_id=n_timer)
         return t
 
 blta = Blueprint(
@@ -210,7 +233,6 @@ class TimerAPI(MethodView):
         """
         update timer of a bot
         """
-        LOG.info("PUT: bot/%d/timer/%d", bot_id, timer_id)
         LOG.debug(" data: %s", update_data)
         
         if timer_id < 0 or timer_id > 4:
@@ -218,43 +240,51 @@ class TimerAPI(MethodView):
 
         bot = connect(bot_id=bot_id)
 
-        timer, num_timer = bot.get_timer(idx=timer_id)
+        try:
+            timer, num_timer = bot.get_timer(idx=timer_id)
 
-        if timer is None:
-            abort(404, message="timer not found")
-        
-        data = timer.to_dict()
-
-        for field in ["action", "enabled", "weekdays", "hour", "min"]:
-            if field in update_data:
-                data[field] = update_data[field]
+            if timer is None:
+                abort(404, message="timer not found")
             
-        timer_updated = StandardTimer(action=Action[data["action"]],
-                                enabled=data["enabled"], 
-                                weekdays=data["weekdays"],
-                                hour=data["hour"],
-                                min=data["min"])
+            data = timer.to_dict()
 
-        bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
-        t = timer_updated.to_dict(id=timer_id)
+            for field in ["action", "enabled", "weekdays", "hour", "min"]:
+                if field in update_data:
+                    data[field] = update_data[field]
+                
+            timer_updated = StandardTimer(action=Action[data["action"]],
+                                    enabled=data["enabled"], 
+                                    weekdays=data["weekdays"],
+                                    hour=data["hour"],
+                                    min=data["min"])
+
+            bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
+
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
+
+        t = timer_updated.to_dict(timer_id=timer_id)
         return t
 
     @jwt_required
     @blta.response(code=204)
     def delete(self, bot_id: int, timer_id: int):
         """Delete timer of bot"""
-        LOG.info("DELETE: bot/%d/timer/%d", bot_id, timer_id)
 
         bot = connect(bot_id=bot_id)
 
-        timers = bot.get_timers()
+        try: 
+            timers = bot.get_timers()
 
-        if timer_id >= len(timers):
-            abort(404, message="timer not found")
-        
-        del timers[timer_id]
+            if timer_id >= len(timers):
+                abort(404, message="timer not found")
+            
+            del timers[timer_id]
 
-        bot.set_timers(timers)
+            bot.set_timers(timers)
+
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
 
 
 blas = Blueprint(
@@ -270,17 +300,18 @@ class ActionListAPI(MethodView):
     @blas.response(code=204)
     def post(self, new_data: Dict[str, Any], bot_id: int):
         """Perform an Action"""
-        
         bot = connect(bot_id=bot_id)
-
-        if new_data['action'] == "press":
-            bot.press()
-        elif new_data['action'] == "turn_on":
-            bot.switch(on=True)
-        elif new_data['action'] == "turn_off":
-            bot.switch(on=False)
-        else:
-            abort(400, message="unknown action")
+        try: 
+            if new_data['action'] == "press":
+                bot.press()
+            elif new_data['action'] == "turn_on":
+                bot.switch(on=True)
+            elif new_data['action'] == "turn_off":
+                bot.switch(on=False)
+            else:
+                abort(400, message="unknown action")
+        except SwitchbotError as e:
+            handle_switchbot_error(e)
 
 bll = Blueprint(
     'login', 'login', url_prefix=app.config['BASE_URL'] + '/login',
@@ -290,12 +321,14 @@ bll = Blueprint(
 @bll.route('')
 class LoginAPI(MethodView):
 
-    # TODO [nku] use flask-limiter to prevent too many password tries 
+    decorators = [limiter.limit(app.config['LOGIN_LIMITER_LIMIT'])]
 
     @bll.arguments(LoginSchema)
     @bll.response(LoginSchema, code=201)
     def post(self, new_data: Dict[str, Any]):
         """Perform a Login"""
+
+        LOG.warning("Get Remote Address: " +  str(get_remote_address()))
 
         candidate = new_data['password']
 
@@ -315,4 +348,5 @@ api.register_blueprint(blas)
 api.register_blueprint(bll)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+    
+    app.run(host='0.0.0.0')

@@ -1,29 +1,23 @@
-import pygatt, queue, zlib, time, re
-
-from timer import parse_timer_cmd, delete_timer_cmd, StandardTimer, IntervalTimer, BaseTimer
-
+import logging
+import re
+import time
+import zlib
 from binascii import hexlify
+from typing import Any, Dict, List, Tuple
 from uuid import UUID
-from typing import List, Dict, Any, Tuple
 
-notification_queue = queue.Queue()
+import pygatt
+from switchbot_timer import BaseTimer, delete_timer_cmd, parse_timer_cmd
+from switchbot_util import ActionStatus, SwitchbotError, handle_notification, notification_queue
 
-def handle_notification(handle: int, value: bytes): # TODO [nku] maybe change to bytearray
-    """
-    handle: integer, characteristic read handle the data was received on
-    value: bytearray, the data returned in the notification
-    """
-    notification_queue.put((handle, value))
-
-# TODO [nku] add error handling and retry
 # TODO [nku] add logging
+LOG = logging.getLogger(__name__)
 
 class Scanner(object):
-
     def __init__(self):
-         self.adapter = pygatt.GATTToolBackend()
+        self.adapter = pygatt.GATTToolBackend()
 
-    def scan(self, known_dict={}) -> List[str]:
+    def scan(self, known_dict=dict()) -> List[str]:
         try:
             self.adapter.start()
             devices = self.adapter.scan()
@@ -32,12 +26,9 @@ class Scanner(object):
 
         switchbots = []
 
-        for device in devices:
-            print("Device: ", device['address'])
-    
+        for device in devices:    
             if device['address'] in known_dict:
                 # mac of device is known -> don't need to check characteristics to know if device is a switchbot
-                print("Known Mac: ", device['address'])
                 if known_dict[device['address']]:
                     switchbots.append(device['address'])
             elif self._is_switchbot(mac=device['address']):
@@ -47,7 +38,6 @@ class Scanner(object):
         return switchbots
 
     def _is_switchbot(self, mac: str) -> bool:
-        print("Checking Unknown Device: ", mac)
         try:
             self.adapter.start()
             device = self.adapter.connect(mac, address_type=pygatt.BLEAddressType.random)
@@ -68,8 +58,6 @@ class Scanner(object):
 
 class Bot(object):
 
-    # TODO [nku] handle case when password is wrong
-
     def __init__(self, id: int, mac: str, name: str):
 
         if not re.match(r"[0-9A-F]{2}(?:[-:][0-9A-F]{2}){5}$", mac):
@@ -80,21 +68,24 @@ class Bot(object):
         self.name = name
 
         self.adapter = pygatt.GATTToolBackend()
+        self.device = None
         self.pw = None
+        self.notification_activated = False
 
     def press(self):
         
         try:
             self.adapter.start()
-            
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd = b'\x57\x11' + self.pw
             else:
                 cmd = b'\x57\x01'
 
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -103,8 +94,8 @@ class Bot(object):
     def switch(self, on: bool):
         try:
             self.adapter.start()
-            
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd = b'\x57\x11' + self.pw
@@ -116,7 +107,8 @@ class Bot(object):
             else: # off
                 cmd += b'\x02'
 
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -130,6 +122,7 @@ class Bot(object):
         try:
             self.adapter.start()
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd = b'\x57\x1f' + self.pw
@@ -138,7 +131,8 @@ class Bot(object):
 
             cmd += b'\x08' + sec.to_bytes(1, byteorder='big')
 
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -159,7 +153,8 @@ class Bot(object):
             cmd += timer_id
 
             # trigger and wait for notification
-            value = self._get_notification(trigger_cmd=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
             # parse result
             timer, num_timer = parse_timer_cmd(value)
@@ -177,6 +172,7 @@ class Bot(object):
         try:
             self.adapter.start()
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd = b'\x57\x19' + self.pw
@@ -184,7 +180,8 @@ class Bot(object):
                 cmd = b'\x57\x09'
 
             cmd += timer.to_cmd(idx=idx, num_timer=num_timer)
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -195,6 +192,7 @@ class Bot(object):
         try:
             self.adapter.start()
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd_base = b'\x57\x19' + self.pw
@@ -205,12 +203,14 @@ class Bot(object):
             for i, timer in enumerate(timers):      
                 cmd = cmd_base
                 cmd += timer.to_cmd(idx=i, num_timer=num_timer)
-                self.device.char_write_handle(handle=0x16, value=cmd)
+                value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+                self._handle_switchbot_status_msg(value=value)
             
             for i in range(num_timer, 5):
                 cmd = cmd_base
                 cmd += delete_timer_cmd(idx=i, num_timer=num_timer)
-                self.device.char_write_handle(handle=0x16, value=cmd)
+                value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+                self._handle_switchbot_status_msg(value=value)
 
         
         finally:
@@ -218,10 +218,11 @@ class Bot(object):
 
 
     def set_current_timestamp(self):
- 
+
         try:
             self.adapter.start()
             self._connect()
+            self._activate_notifications()
 
             if self.pw:
                 cmd_base = b'\x57\x19' + self.pw
@@ -236,7 +237,8 @@ class Bot(object):
             cmd = cmd_base + b'\x01'
             cmd  += timestamp.to_bytes(8, byteorder='big')
 
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -244,11 +246,13 @@ class Bot(object):
 
     def set_mode(self, dual_state: bool, inverse: bool):
 
-        # TODO [nku] maybe delete timers
-
         try:
             self.adapter.start()
             self._connect()
+            self._activate_notifications()
+
+            # delete all timers -> because if dual_state changes, then also action of timer needs to change
+            self.set_timers(timers=[])
 
             if self.pw:
                 cmd_base = b'\x57\x13' + self.pw
@@ -265,7 +269,8 @@ class Bot(object):
 
             cmd += config.to_bytes(1, byteorder='big')
 
-            self.device.char_write_handle(handle=0x16, value=cmd)
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
         finally:
             self.adapter.stop()
@@ -282,9 +287,8 @@ class Bot(object):
                 cmd = b'\x57\x02'
 
             # trigger and wait for notification
-            value = self._get_notification(trigger_cmd=cmd)
-
-            print("Settings: ", str(hexlify(value)))
+            value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+            self._handle_switchbot_status_msg(value=value)
 
             # parse result
             s = {} 
@@ -321,7 +325,8 @@ class Bot(object):
                 cmd = base_cmd + timer_id
 
                 # trigger and wait for notification
-                value = self._get_notification(trigger_cmd=cmd)
+                value = self._write_cmd_and_wait_for_notification(handle=0x16, cmd=cmd)
+                self._handle_switchbot_status_msg(value=value)
 
                 # parse result
                 timer, _ = parse_timer_cmd(value)
@@ -344,21 +349,50 @@ class Bot(object):
         self.pw = crc.to_bytes(4, 'big')
 
     def _connect(self):
-        self.device = self.adapter.connect(self.mac, address_type=pygatt.BLEAddressType.random)
+        try:
+            self.device = self.adapter.connect(self.mac, address_type=pygatt.BLEAddressType.random)
+        except pygatt.BLEError:
+            LOG.exception("pygatt: failed to connect to ble device")
+            raise SwitchbotError(message="communication with ble device failed")
+
     
     def _activate_notifications(self):
         uuid = "cba20003-224d-11e6-9fb8-0002a5d5c51b"
-        self.device.subscribe(uuid, callback=handle_notification)
+        try:
+            self.device.subscribe(uuid, callback=handle_notification)
+            self.notification_activated = True
+        except pygatt.BLEError:
+            LOG.exception("pygatt: failed to activate notifications")
+            raise SwitchbotError(message="communication with ble device failed")
 
-    def _get_notification(self, trigger_cmd):
+    def _write_cmd_and_wait_for_notification(self, handle, cmd, notification_timeout_sec=5):
         """
-        utility method to trigger and wait for a notification of the switchbot
+        utility method to write a command to the handle and wait for a notification,
+        (requires that notifications are activated)
         """
+        if not self.notification_activated:
+            raise ValueError("notifications must be activated")
 
-        # trigger the notification
-        self.device.char_write_handle(handle=0x16, value=trigger_cmd)
+        try:
+            # trigger the notification
+            self.device.char_write_handle(handle=handle, value=cmd)
 
-        # wait for notification to return
-        _, value = notification_queue.get() # TODO [nku] add timeout and retry?
+            # wait for notification to return
+            _, value = notification_queue.get(timeout=notification_timeout_sec)
+        
+        except pygatt.BLEError:
+            LOG.exception("pygatt: failed to write cmd and wait for notification")
+            raise SwitchbotError(message="communication with ble device failed")
 
         return value
+
+    def _handle_switchbot_status_msg(self, value: bytearray):
+        """
+        checks the status code of the value and raises an exception if the action did not complete
+
+        """
+        status = value[0]
+        action_status = ActionStatus(status)
+
+        if action_status is not ActionStatus.complete:
+            raise SwitchbotError(message=action_status.msg(), switchbot_action_status=action_status)
