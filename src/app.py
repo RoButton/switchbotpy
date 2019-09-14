@@ -346,7 +346,3 @@ api.register_blueprint(blts)
 api.register_blueprint(blta)
 api.register_blueprint(blas)
 api.register_blueprint(bll)
-
-if __name__ == '__main__':
-    
-    app.run(host='0.0.0.0')
