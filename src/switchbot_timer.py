@@ -88,12 +88,12 @@ class Mode(Enum):
 class BaseTimer(ABC):  
 
     def __init__(self, enabled:bool=None, weekdays:List[int]=None, hour:int=None, min:int=None, mode:Mode=None, action:Action=None, interval_timer_sum:int=None, interval_hour:int=None, interval_min:int=None):
-        self.enabled = enabled      # TODO [nku] define default
-        self.weekdays = weekdays    # TODO [nku] define default
+        self.enabled = enabled 
+        self.weekdays = weekdays
         self.hour = hour if hour else 0
         self.min = min if min else 0
         self.mode = mode
-        self.action = action # TODO [nku] define default
+        self.action = action
         self.interval_timer_sum = interval_timer_sum if interval_timer_sum else 0
         self.interval_hour = interval_hour if interval_hour else 0
         self.interval_min = interval_min if interval_min else 0
@@ -101,7 +101,7 @@ class BaseTimer(ABC):
         super().__init__()
 
 
-    def to_cmd(self, idx:int, num_timer:int):
+    def to_cmd(self, idx: int, num_timer: int):
 
         if idx < 0 or idx >= num_timer or num_timer > 4:
             raise ValueError("Illegal Argument: Support for max 5 timers and idx must be < num_timer")
@@ -136,7 +136,7 @@ class BaseTimer(ABC):
 
         return cmd
 
-    def to_dict(self, id=None):
+    def to_dict(self, timer_id=None):
         raise NotImplementedError()
         
 
@@ -146,10 +146,10 @@ class StandardTimer(BaseTimer):
     def __init__(self, enabled: bool, weekdays: List[int], hour: int, min: int, action: Action):
         BaseTimer.__init__(self, mode=Mode.standard, action=action, enabled=enabled, weekdays=weekdays, hour=hour, min=min)
 
-    def to_dict(self, id=None):
+    def to_dict(self, timer_id=None):
         d = {}
-        if id is not None:
-            d['id'] = id
+        if timer_id is not None:
+            d['id'] = timer_id
         d['mode'] = self.mode.name
         d['action'] = self.action.name
         d['enabled'] = self.enabled
@@ -163,10 +163,10 @@ class IntervalTimer(BaseTimer):
     def __init__(self, enabled: bool, mode: Mode, action: Action, timer_sum: int, hour: int, min: int):
         BaseTimer.__init__(self, enabled=enabled, mode=mode, action=action, interval_timer_sum=timer_sum, interval_hour=hour, interval_min=min)
     
-    def to_dict(self, id=None):
+    def to_dict(self, timer_id=None):
         d = {}
-        if id is not None:
-            d['id'] = id
+        if timer_id is not None:
+            d['id'] = timer_id
         d['mode'] = self.mode.name
         d['action'] = self.action.name
         d['enabled'] = self.enabled

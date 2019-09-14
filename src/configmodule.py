@@ -8,10 +8,11 @@ bcrypt = Bcrypt()
 
 class Config(object):
     DEBUG = False
-
+    DB_PATH = './db.json'
     BASE_URL = '/switchbot/api/v1'
     OPENAPI_VERSION = '3.0.2'
     JWT_TOKEN_EXPIRE_HOURS = 24
+    LOGIN_LIMITER_LIMIT = "5/minute"
 
     @property
     def JWT_SECRET_KEY(self):
