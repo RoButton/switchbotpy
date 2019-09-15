@@ -30,10 +30,10 @@ app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 limiter = Limiter(app, key_func=get_remote_address)
 LOG = create_logger(app)
 
-LOG.setLevel(logging.DEBUG)
-
-#SwitchbotLog.setLevel(logging.INFO)
-logging.getLogger('switchbot').setLevel(logging.DEBUG)
+gunicorn_logger = logging.getLogger('gunicorn.error')
+#logging.getLogger('switchbot').setLevel(logging.DEBUG)
+logging.getLogger('switchbot').setLevel(gunicorn_logger.level)
+LOG.setLevel(gunicorn_logger.level)
 
 def connect(bot_id: int):
     print("Connect to Bot: %s", bot_id)

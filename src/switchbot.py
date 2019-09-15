@@ -13,7 +13,6 @@ from switchbot_util import ActionStatus, SwitchbotError, handle_notification, no
 
 logging.basicConfig()
 LOG = logging.getLogger('switchbot')
-#LOG.setLevel(logging.INFO)
 
 class Scanner(object):
     def __init__(self):
@@ -386,13 +385,7 @@ class Bot(object):
             LOG.exception("pygatt: failed to write cmd and wait for notification")
             raise SwitchbotError(message="communication with ble device failed")
         
-        #LOG.info("handle: %s cmd: %s notification: %s", str(hex(handle)), str(hexlify(cmd)), str(hexlify(value)))
-        
-
-        LOG.debug("test debug")
-        LOG.info("test info")
-        LOG.warning("test warning")
-        LOG.error("test error")
+        LOG.debug("handle: %s cmd: %s notification: %s", str(hex(handle)), str(hexlify(cmd)), str(hexlify(value)))
         return value
 
     def _handle_switchbot_status_msg(self, value: bytearray):
