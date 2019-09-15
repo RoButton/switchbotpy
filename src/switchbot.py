@@ -384,7 +384,7 @@ class Bot(object):
             LOG.exception("pygatt: failed to write cmd and wait for notification")
             raise SwitchbotError(message="communication with ble device failed")
         
-        LOG.debug("switchbot handle: %s \tcmd: %s \tnotification: %s", str(hexlify(handle)), str(hexlify(cmd)), str(hexlify(value)))
+        LOG.debug("switchbot handle: %s \tcmd: %s \tnotification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
         return value
 
     def _handle_switchbot_status_msg(self, value: bytearray):
