@@ -14,8 +14,10 @@ from switchbot_util import ActionStatus, SwitchbotError, handle_notification, no
 #LOG = logging.getLogger('switchbot')
 #LOG.setLevel(logging.DEBUG)
 
-logging.basicConfig(level=logging.DEBUG)
 
+logging.basicConfig()
+LOG = logging.getLogger('switchbot')
+LOG.setLevel(logging.DEBUG)
 
 class Scanner(object):
     def __init__(self):
@@ -356,7 +358,7 @@ class Bot(object):
         try:
             self.device = self.adapter.connect(self.mac, address_type=pygatt.BLEAddressType.random)
         except pygatt.BLEError:
-            logging.exception("pygatt: failed to connect to ble device")
+            LOG.exception("pygatt: failed to connect to ble device")
             raise SwitchbotError(message="communication with ble device failed")
 
     
@@ -366,7 +368,7 @@ class Bot(object):
             self.device.subscribe(uuid, callback=handle_notification)
             self.notification_activated = True
         except pygatt.BLEError:
-            logging.exception("pygatt: failed to activate notifications")
+            LOG.exception("pygatt: failed to activate notifications")
             raise SwitchbotError(message="communication with ble device failed")
 
     def _write_cmd_and_wait_for_notification(self, handle, cmd, notification_timeout_sec=5):
@@ -385,11 +387,12 @@ class Bot(object):
             _, value = notification_queue.get(timeout=notification_timeout_sec)
         
         except pygatt.BLEError:
-            logging.exception("pygatt: failed to write cmd and wait for notification")
+            LOG.exception("pygatt: failed to write cmd and wait for notification")
             raise SwitchbotError(message="communication with ble device failed")
         
-        logging.info("handle: %s cmd: %s notification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
-        logging.warning("test warning")
+        LOG.info("handle: %s cmd: %s notification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
+        LOG.debug("test debug")
+        LOG.warning("test warning")
         return value
 
     def _handle_switchbot_status_msg(self, value: bytearray):
