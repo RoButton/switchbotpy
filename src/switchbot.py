@@ -389,6 +389,7 @@ class Bot(object):
             raise SwitchbotError(message="communication with ble device failed")
         
         logging.info("handle: %s cmd: %s notification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
+        logging.warning("test warning")
         return value
 
     def _handle_switchbot_status_msg(self, value: bytearray):
