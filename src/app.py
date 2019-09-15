@@ -16,6 +16,7 @@ import lookup
 from configmodule import Config
 from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema
 from switchbot import Bot, Scanner
+from switchbot import LOG as SwitchbotLog
 from switchbot_timer import Action, StandardTimer
 from switchbot_util import ActionStatus, SwitchbotError
 
@@ -28,6 +29,9 @@ jwt = JWTManager(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 limiter = Limiter(app, key_func=get_remote_address)
 LOG = create_logger(app)
+
+root = logging.getLogger()
+root.addHandler(SwitchbotLog)
 
 def connect(bot_id: int):
     print("Connect to Bot: %s", bot_id)
