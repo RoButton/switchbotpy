@@ -12,6 +12,7 @@ from switchbot_util import ActionStatus, SwitchbotError, handle_notification, no
 
 # TODO [nku] add logging
 LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 class Scanner(object):
     def __init__(self):
