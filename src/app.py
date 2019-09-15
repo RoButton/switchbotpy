@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, Dict
 
-import keyring
+import keyring, logging
 from flask import Flask
 from flask.logging import create_logger
 from flask.views import MethodView
@@ -16,10 +16,11 @@ import lookup
 from configmodule import Config
 from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema
 from switchbot import Bot, Scanner
+from switchbot import LOG as SwitchbotLog
 from switchbot_timer import Action, StandardTimer
 from switchbot_util import ActionStatus, SwitchbotError
 
-app = Flask('Switchbot')
+app = Flask('switchbot_api')
 app.config.from_object(Config())
 
 bcrypt = Bcrypt(app)
@@ -29,8 +30,13 @@ app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 limiter = Limiter(app, key_func=get_remote_address)
 LOG = create_logger(app)
 
+gunicorn_logger = logging.getLogger('gunicorn.error')
+logging.getLogger('switchbot').setLevel(gunicorn_logger.level)
+LOG.setLevel(gunicorn_logger.level)
+
 def connect(bot_id: int):
-    print("Connect to Bot: %s", bot_id)
+    LOG.debug("connect to bot: %s", bot_id)
+
     # find mac address in db
     device = lookup.find_device_by_id(bot_id=bot_id)
 
@@ -69,7 +75,6 @@ class BotListAPI(MethodView):
         """
         list available switchbots
         """
-        LOG.info("GET: bots")
 
         bots = []
         scanner = Scanner()
@@ -81,7 +86,8 @@ class BotListAPI(MethodView):
             bot = lookup.find_device_by_mac(mac=address)
             if bot is None: # new bot
                 LOG.debug("insert new bot: %s", address)
-                bot = lookup.insert_device(mac=address)
+                bot_id = lookup.insert_device(mac=address)
+                bot = lookup.find_device_by_id(bot_id)
             
             bots.append(bot)
 
@@ -99,8 +105,6 @@ class BotAPI(MethodView):
     @jwt_required
     @blb.response(BotSchema)
     def get(self, bot_id: int):
-        
-        LOG.info("GET: bot %d", bot_id)
         bot = connect(bot_id=bot_id)
 
         # communicate with bot to get settings
@@ -109,12 +113,11 @@ class BotAPI(MethodView):
         except SwitchbotError as e:
             handle_switchbot_error(e)
 
-
-        LOG.debug("bot settings: %s", d)
-
         d["id"] = bot.id
         d["mac"] = bot.mac
         d["name"] = bot.name
+
+        LOG.debug("bot settings: %s", d)
         
         return d
 
@@ -123,8 +126,7 @@ class BotAPI(MethodView):
     @blb.response(BotSchema)
     def put(self, update_data: Dict[str, Any], bot_id: int):
         
-        LOG.info("PUT: bot %d", bot_id)
-        LOG.debug(" data: %s", update_data)
+        LOG.debug("update data: %s", update_data)
 
         if 'password' in update_data:
             device = lookup.find_device_by_id(bot_id=bot_id)
@@ -157,6 +159,7 @@ class BotAPI(MethodView):
 
             
             d  = self.get(bot_id=bot_id)
+            LOG.debug("updated bot settings: %s", d)
 
         except SwitchbotError as e:
             handle_switchbot_error(e)
@@ -184,6 +187,7 @@ class TimerListAPI(MethodView):
 
         for i, timer in enumerate(timers):
             t = timer.to_dict(timer_id=i)
+            LOG.debug("timer %d: %s", i, t)
             result.append(t)
         return result
 
@@ -192,7 +196,7 @@ class TimerListAPI(MethodView):
     @blts.response(TimerSchema, code=201)
     def post(self, new_data: Dict[str, Any], bot_id: int):
         """Add a new timer"""
-        LOG.debug(" data: %s", new_data)
+        LOG.debug("new data: %s", new_data)
 
         bot = connect(bot_id=bot_id)
         try:
@@ -216,6 +220,7 @@ class TimerListAPI(MethodView):
             handle_switchbot_error(e)
 
         t = timer.to_dict(timer_id=n_timer)
+        LOG.debug("new timer: %s", t)
         return t
 
 blta = Blueprint(
@@ -233,7 +238,7 @@ class TimerAPI(MethodView):
         """
         update timer of a bot
         """
-        LOG.debug(" data: %s", update_data)
+        LOG.debug("timer update data: %s", update_data)
         
         if timer_id < 0 or timer_id > 4:
             abort(404, message="timer not found")
@@ -264,6 +269,7 @@ class TimerAPI(MethodView):
             handle_switchbot_error(e)
 
         t = timer_updated.to_dict(timer_id=timer_id)
+        LOG.debug("updated timer: %s", t)
         return t
 
     @jwt_required
@@ -304,10 +310,13 @@ class ActionListAPI(MethodView):
         try: 
             if new_data['action'] == "press":
                 bot.press()
+                LOG.info("bot pressed")
             elif new_data['action'] == "turn_on":
                 bot.switch(on=True)
+                LOG.info("bot turned on")
             elif new_data['action'] == "turn_off":
                 bot.switch(on=False)
+                LOG.info("bot turned off")
             else:
                 abort(400, message="unknown action")
         except SwitchbotError as e:
@@ -328,7 +337,7 @@ class LoginAPI(MethodView):
     def post(self, new_data: Dict[str, Any]):
         """Perform a Login"""
 
-        LOG.warning("Get Remote Address: " +  str(get_remote_address()))
+        LOG.info("login of remote address: " +  str(get_remote_address()))
 
         candidate = new_data['password']
 
