@@ -11,8 +11,9 @@ from switchbot_timer import BaseTimer, delete_timer_cmd, parse_timer_cmd
 from switchbot_util import ActionStatus, SwitchbotError, handle_notification, notification_queue
 
 # TODO [nku] add logging
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('switchbot')
 LOG.setLevel(logging.DEBUG)
+
 
 class Scanner(object):
     def __init__(self):
@@ -385,7 +386,7 @@ class Bot(object):
             LOG.exception("pygatt: failed to write cmd and wait for notification")
             raise SwitchbotError(message="communication with ble device failed")
         
-        LOG.debug("switchbot handle: %s \tcmd: %s \tnotification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
+        LOG.info("handle: %s cmd: %s notification: %s", str(handle), str(hexlify(cmd)), str(hexlify(value)))
         return value
 
     def _handle_switchbot_status_msg(self, value: bytearray):
