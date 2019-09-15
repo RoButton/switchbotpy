@@ -32,6 +32,8 @@ LOG = create_logger(app)
 
 LOG.setLevel(logging.DEBUG)
 
+SwitchbotLog.setLevel(logging.INFO)
+
 def connect(bot_id: int):
     print("Connect to Bot: %s", bot_id)
     # find mac address in db
