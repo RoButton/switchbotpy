@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any, Dict
 
-import keyring
+import keyring, logging
 from flask import Flask
 from flask.logging import create_logger
 from flask.views import MethodView
