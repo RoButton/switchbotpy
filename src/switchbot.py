@@ -9,10 +9,10 @@ from uuid import UUID
 import pygatt
 from switchbot_timer import BaseTimer, delete_timer_cmd, parse_timer_cmd
 from switchbot_util import ActionStatus, SwitchbotError, handle_notification, notification_queue
-
+from app import LOG
 # TODO [nku] add logging
-LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+#LOG = logging.getLogger(__name__)
+#LOG.setLevel(logging.DEBUG)
 
 class Scanner(object):
     def __init__(self):
