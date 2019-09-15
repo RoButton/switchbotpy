@@ -30,6 +30,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 limiter = Limiter(app, key_func=get_remote_address)
 LOG = create_logger(app)
 
+LOG.setLevel(logging.DEBUG)
 
 def connect(bot_id: int):
     print("Connect to Bot: %s", bot_id)
