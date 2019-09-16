@@ -75,7 +75,7 @@ class Bot(object):
         self.notification_activated = False
 
     def press(self):
-        
+        LOG.info("press bot")
         try:
             self.adapter.start()
             self._connect()
@@ -94,6 +94,7 @@ class Bot(object):
 
 
     def switch(self, on: bool):
+        LOG.info("switch bot on=%s", str(on))
         try:
             self.adapter.start()
             self._connect()
@@ -117,9 +118,9 @@ class Bot(object):
 
 
     def set_hold_time(self, sec: int):
-
-        if sec < 1 or sec > 60:
-            raise ValueError("hold time must be between [1, 60] seconds")
+        LOG.info("set hold time: %d sec", sec)
+        if sec < 0 or sec > 60:
+            raise ValueError("hold time must be between [0, 60] seconds")
 
         try:
             self.adapter.start()
@@ -139,8 +140,8 @@ class Bot(object):
         finally:
             self.adapter.stop()
 
-    def get_timer(self, idx:int) -> Tuple[BaseTimer, int]:
-
+    def get_timer(self, idx: int) -> Tuple[BaseTimer, int]:
+        LOG.info("get timer: %d", idx)
         try:
             self.adapter.start()
             self._connect()
@@ -167,7 +168,7 @@ class Bot(object):
         return timer, num_timer
 
     def set_timer(self, timer: BaseTimer, idx: int, num_timer: int):
-
+        LOG.info("set timer: %d", idx)
         if idx < 0 or idx > 4 or num_timer <= idx or num_timer < 1 or num_timer > 5:
             raise ValueError("Illegal Timer Idx or Number of Timers")
     
@@ -190,7 +191,7 @@ class Bot(object):
 
 
     def set_timers(self, timers: List[BaseTimer]):
-
+        LOG.info("set timers")
         try:
             self.adapter.start()
             self._connect()
@@ -220,7 +221,7 @@ class Bot(object):
 
 
     def set_current_timestamp(self):
-
+        LOG.info("setting current timestamp")
         try:
             self.adapter.start()
             self._connect()
@@ -247,14 +248,16 @@ class Bot(object):
     
 
     def set_mode(self, dual_state: bool, inverse: bool):
+        LOG.info("setting mode: dual_state=%s  inverse=%s", str(dual_state), str(inverse))
+        LOG.info("  resetting all timers")
+
+        # delete all timers -> because if dual_state changes, then also action of timer needs to change
+        self.set_timers(timers=[])
 
         try:
             self.adapter.start()
             self._connect()
             self._activate_notifications()
-
-            # delete all timers -> because if dual_state changes, then also action of timer needs to change
-            self.set_timers(timers=[])
 
             if self.pw:
                 cmd_base = b'\x57\x13' + self.pw
@@ -278,6 +281,7 @@ class Bot(object):
             self.adapter.stop()
 
     def get_settings(self) -> Dict[str, Any]:
+        LOG.info("get settings")
         try:
             self.adapter.start()
             self._connect()
@@ -293,7 +297,7 @@ class Bot(object):
             self._handle_switchbot_status_msg(value=value)
 
             # parse result
-            s = {} 
+            s = dict() 
 
             s["battery"] = value[1]
             s["firmware"] = value[2] / 10.0
@@ -309,7 +313,7 @@ class Bot(object):
         return s
 
     def get_timers(self, n_timers: int=5) -> List[BaseTimer]:
-
+        LOG.info("get timers")
         try:
             self.adapter.start()
             self._connect()
@@ -346,6 +350,7 @@ class Bot(object):
         return timers
 
     def encrypted(self, password: str):
+        LOG.info("use encrypted communication")
         data = password.encode()
         crc = zlib.crc32(data)
         self.pw = crc.to_bytes(4, 'big')
