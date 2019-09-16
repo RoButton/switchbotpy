@@ -19,6 +19,7 @@ class Scanner(object):
         self.adapter = pygatt.GATTToolBackend()
 
     def scan(self, known_dict=dict()) -> List[str]:
+        LOG.info("scanning for bots")
         try:
             self.adapter.start()
             devices = self.adapter.scan()
