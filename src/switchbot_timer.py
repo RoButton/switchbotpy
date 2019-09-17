@@ -9,17 +9,22 @@ def parse_timer_cmd(val: bytes):
     num_timer = val[1]
     weekdays = _from_byte_to_iso_weekdays(val[3])
     hour = val[4]
-    min = val[5]
+    minutes = val[5]
 
-    interval_mode = val[6]
-    action = val[7]
+    interval_mode = val[6] & 15 # 15 = 00001111 in binary and interval mode is only in second part of the byte
+    action = val[7] & 15 # action mode is only in second part of the byte
     interval_timer_sum = val[8]
     interval_hour = val[9]
     interval_min = val[10]
 
     enabled = not (val[3] == 0 and val[6] == 0 and val[7] == 0)
 
-    if not enabled and hour == 0 and min == 0 and interval_timer_sum == 0 and interval_hour == 0 and interval_min == 0:
+    if not enabled:
+        # if a timer is disabled, then the repeating pattern is stored in the first part of the interval mode and the action mode
+        repeat = (val[6] & 240) | ((val[7] & 240) >> 4)
+        weekdays = _from_byte_to_iso_weekdays(repeat)
+
+    if not enabled and hour == 0 and minutes == 0 and interval_timer_sum == 0 and interval_hour == 0 and interval_min == 0:
         timer = None # timer not set
     elif interval_mode:
         timer = IntervalTimer(enabled=enabled, 
@@ -29,7 +34,7 @@ def parse_timer_cmd(val: bytes):
                                 hour=interval_hour,
                                 min=interval_min)
     else:
-        timer = StandardTimer(enabled=enabled, weekdays=weekdays, hour=hour, min=min, action=Action(action))
+        timer = StandardTimer(enabled=enabled, weekdays=weekdays, hour=hour, min=minutes, action=Action(action))
 
     return timer, num_timer
 
@@ -114,21 +119,30 @@ class BaseTimer(ABC):
 
         # filler
         cmd += b'\x00'
-       
+
+        # byte[0] = No Repeat, byte[1] = Sunday, byte[2] = Saturday, ... byte[7] = Monday
+        repeat = _from_iso_weekdays_to_byte(self.weekdays)
         if self.enabled:
-            # byte[0] = No Repeat, byte[1] = Sunday, byte[2] = Saturday, ... byte[7] = Monday
-            cmd += _from_iso_weekdays_to_byte(self.weekdays)
+            cmd += repeat
         else: 
             cmd += b'\x00'
 
         cmd += _to_byte(self.hour)
         cmd += _to_byte(self.min)
+        
+        mode_b = _to_byte(self.mode.value)
+        if not self.enabled:
+             # if timer is not enabled, store the first 4 bits (no_rep, sun, sat, fri)
+             # of the repeating pattern in the top 4 bits of the action
+            mode_b = bytes(mode_b | (repeat & 240))
+        cmd += mode_b
 
-        if self.enabled:
-            cmd += _to_byte(self.mode.value)
-            cmd += _to_byte(self.action.value)
-        else:
-            cmd += b'\x00\x00'
+        action_b = _to_byte(self.action.value)
+        if not self.enabled:
+            # if timer is not enabled, store the last 4 bits (mon, tue, wed, thu)
+            # of the repeating pattern in the top 4 bits of the action
+            action_b = bytes(action_b | ((repeat & 15) << 4))
+        cmd += action_b
 
         cmd += _to_byte(self.interval_timer_sum)
         cmd += _to_byte(self.interval_hour)

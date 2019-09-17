@@ -74,6 +74,8 @@ class Bot(object):
         self.pw = None
         self.notification_activated = False
 
+        LOG.info("create bot: id=%d mac=%s name=%s", self.id, self.mac, self.name)
+
     def press(self):
         LOG.info("press bot")
         try:
