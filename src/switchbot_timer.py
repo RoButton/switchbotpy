@@ -3,7 +3,6 @@ from abc import ABC
 from typing import List
 
 
-
 def parse_timer_cmd(val: bytes):
 
     num_timer = val[1]
@@ -134,9 +133,8 @@ class BaseTimer(ABC):
         if not self.enabled:
              # if timer is not enabled, store the first 4 bits (no_rep, sun, sat, fri)
              # of the repeating pattern in the top 4 bits of the action
-            mode_b = bytes(mode_b | (int(repeat) & 240))
-            from binascii import hexlify
-            LOG.warning("Mode: %s", str(hexlify(mode_b)))
+            mode_b = bytes(mode_b | (ord(repeat) & 240))
+            
         cmd += mode_b
 
         action_b = _to_byte(self.action.value)
@@ -144,7 +142,7 @@ class BaseTimer(ABC):
             # if timer is not enabled, store the last 4 bits (mon, tue, wed, thu)
             # of the repeating pattern in the top 4 bits of the action
             action_b = bytes(action_b | ((int(repeat) & 15) << 4))
-            LOG.warning("Action: %s", str(hexlify(mode_b)))
+            
         cmd += action_b
 
         cmd += _to_byte(self.interval_timer_sum)
