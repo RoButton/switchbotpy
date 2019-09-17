@@ -17,7 +17,7 @@ def parse_timer_cmd(val: bytes):
     interval_hour = val[9]
     interval_min = val[10]
 
-    enabled = not (val[3] == 0 and val[6] == 0 and val[7] == 0)
+    enabled = val[3] != 0
 
     if not enabled:
         # if a timer is disabled, then the repeating pattern is stored in the first part of the interval mode and the action mode
