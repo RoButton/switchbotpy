@@ -133,7 +133,7 @@ class BaseTimer(ABC):
         if not self.enabled:
              # if timer is not enabled, store the first 4 bits (no_rep, sun, sat, fri)
              # of the repeating pattern in the top 4 bits of the action
-            mode_b = bytes(ord(mode_b) | (ord(repeat) & 240))
+            mode_b = _to_byte(ord(mode_b) | (ord(repeat) & 240))
             
         cmd += mode_b
 
@@ -141,7 +141,7 @@ class BaseTimer(ABC):
         if not self.enabled:
             # if timer is not enabled, store the last 4 bits (mon, tue, wed, thu)
             # of the repeating pattern in the top 4 bits of the action
-            action_b = bytes(ord(action_b) | ((ord(repeat) & 15) << 4))
+            action_b = _to_byte(ord(action_b) | ((ord(repeat) & 15) << 4))
             
         cmd += action_b
 
