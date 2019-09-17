@@ -134,14 +134,17 @@ class BaseTimer(ABC):
         if not self.enabled:
              # if timer is not enabled, store the first 4 bits (no_rep, sun, sat, fri)
              # of the repeating pattern in the top 4 bits of the action
-            mode_b = bytes(mode_b | (repeat & 240))
+            mode_b = bytes(mode_b | (int(repeat) & 240))
+            from binascii import hexlify
+            LOG.warning("Mode: %s", str(hexlify(mode_b)))
         cmd += mode_b
 
         action_b = _to_byte(self.action.value)
         if not self.enabled:
             # if timer is not enabled, store the last 4 bits (mon, tue, wed, thu)
             # of the repeating pattern in the top 4 bits of the action
-            action_b = bytes(action_b | ((repeat & 15) << 4))
+            action_b = bytes(action_b | ((int(repeat) & 15) << 4))
+            LOG.warning("Action: %s", str(hexlify(mode_b)))
         cmd += action_b
 
         cmd += _to_byte(self.interval_timer_sum)
