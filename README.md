@@ -26,7 +26,7 @@
     <td>press</td>
     <td>0x16</td>
     <td>0x 57 01</td>
-    <td>0x 57 11 <pre>pw8</pre></td>
+    <td>0x 57 11 <code>pw8</code></td>
     <td></td>
     <td>0x13</td>
     <td>Value</td>
