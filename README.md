@@ -7,9 +7,19 @@
 
  <table>
   <tr>
-    <th>Name</th>
+    <th></th>
     <th colspan="3">Request</th>
     <th colspan="3">Notification</th>
+    <th></th>
+  </tr>
+  <tr>
+    <th>Name</th>
+    <th>Handle</th>
+    <th>Unencrypted</th>
+    <th>Encrypted</th>
+    <th>Required</th>
+    <th>Handle</th>
+    <th>Value</th>
     <th>Description</th>
   </tr>
   <tr>
