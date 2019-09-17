@@ -74,6 +74,8 @@ class Bot(object):
         self.pw = None
         self.notification_activated = False
 
+        LOG.info("create bot: id=%d mac=%s name=%s", self.id, self.mac, self.name)
+
     def press(self):
         LOG.info("press bot")
         try:
@@ -379,7 +381,8 @@ class Bot(object):
         """
         if not self.notification_activated:
             raise ValueError("notifications must be activated")
-
+        LOG.debug("handle: %s cmd: %s", str(hex(handle)), str(hexlify(cmd)))
+        
         try:
             # trigger the notification
             self.device.char_write_handle(handle=handle, value=cmd)
