@@ -1,4 +1,4 @@
-import keyring, os, getpass, secrets
+import keyring, getpass, secrets
 
 from flask_bcrypt import Bcrypt
 
