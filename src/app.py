@@ -25,6 +25,8 @@ app.config.from_object(Config())
 
 bcrypt = Bcrypt(app)
 api = Api(app)
+api.spec.components.security_scheme('bearerAuth', {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'})
+
 jwt = JWTManager(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=1)
 limiter = Limiter(app, key_func=get_remote_address)
@@ -70,10 +72,12 @@ blbs = Blueprint(
 class BotListAPI(MethodView):
 
     @jwt_required
-    @blbs.response(BotListSchema(many=True))
+    @blbs.response(BotListSchema(many=True), description="A list of switchbots")
+    @blbs.doc(security=[{"bearerAuth":[]}])
     def get(self):
-        """
-        list available switchbots
+        """List available switchbots
+        
+        Return all switchbots within BLE range
         """
 
         bots = []
@@ -103,8 +107,13 @@ blb = Blueprint(
 class BotAPI(MethodView):
 
     @jwt_required
-    @blb.response(BotSchema)
+    @blb.response(BotSchema, description="A switchbot")
+    @blb.doc(security=[{"bearerAuth":[]}])
     def get(self, bot_id: int):
+        """Find bot settings by id
+
+        Return bot settings based on id, obtained via communicating to the bot via BLE.
+        """
         bot = connect(bot_id=bot_id)
 
         # communicate with bot to get settings
@@ -123,8 +132,15 @@ class BotAPI(MethodView):
 
     @jwt_required
     @blb.arguments(BotSchema)
-    @blb.response(BotSchema)
+    @blb.response(BotSchema, description="An updated switchbot")
+    @blb.doc(security=[{"bearerAuth":[]}])
     def put(self, update_data: Dict[str, Any], bot_id: int):
+        """Update bot settings by id
+
+        Update bot settings (password, device name, hold time, mode) by id
+        (password not set on switchbot but instead this password is only
+        used for the encrypted communication with the bot)
+        """
         
         LOG.debug("update data: %s", update_data)
 
@@ -176,8 +192,13 @@ blts = Blueprint(
 class TimerListAPI(MethodView):
 
     @jwt_required
-    @blts.response(TimerSchema(many=True))
+    @blts.response(TimerSchema(many=True), description="A list of timers")
+    @blts.doc(security=[{"bearerAuth":[]}])
     def get(self, bot_id: int):
+        """List all timers of a bot based on id
+
+        Return timers of a bot based on id
+        """
         bot = connect(bot_id=bot_id)
         result = []
         try:
@@ -193,9 +214,13 @@ class TimerListAPI(MethodView):
 
     @jwt_required
     @blts.arguments(TimerSchema)
-    @blts.response(TimerSchema, code=201)
+    @blts.response(TimerSchema, code=201, description="A timer created")
+    @blts.doc(security=[{"bearerAuth":[]}])
     def post(self, new_data: Dict[str, Any], bot_id: int):
-        """Add a new timer"""
+        """Add timer to a bot based on id
+        
+        Provide timer data to create a new timer for a bot identified by id.
+        """
         LOG.debug("new data: %s", new_data)
 
         bot = connect(bot_id=bot_id)
@@ -233,10 +258,12 @@ class TimerAPI(MethodView):
 
     @jwt_required
     @blta.arguments(TimerSchema(partial=True))
-    @blta.response(TimerSchema)
+    @blta.response(TimerSchema, description="A timer")
+    @blta.doc(security=[{"bearerAuth":[]}])
     def put(self, update_data: Dict[str, Any], bot_id: int, timer_id: int):
-        """
-        update timer of a bot
+        """Update a timer by id of a bot identified by id
+        
+        Provide timer data to update a new timer of a bot identified by id.
         """
         LOG.debug("timer update data: %s", update_data)
         
@@ -273,9 +300,13 @@ class TimerAPI(MethodView):
         return t
 
     @jwt_required
-    @blta.response(code=204)
+    @blta.response(code=204, description="OK")
+    @blta.doc(security=[{"bearerAuth":[]}])
     def delete(self, bot_id: int, timer_id: int):
-        """Delete timer of bot"""
+        """Delete a timer by id of a bot identified by id
+        
+        Delete a timer by id of a bot identified by id
+        """
 
         bot = connect(bot_id=bot_id)
 
@@ -303,9 +334,14 @@ class ActionListAPI(MethodView):
 
     @jwt_required
     @blas.arguments(ActionSchema)
-    @blas.response(code=204)
+    @blas.response(code=204, description="OK")
+    @blas.doc(security=[{"bearerAuth":[]}])
     def post(self, new_data: Dict[str, Any], bot_id: int):
-        """Perform an Action"""
+        """Perform an Action (Press, Turn On, Turn Off) on a bot by id
+        
+        Perform an Action (Press, Turn On, Turn Off) on a bot identified by id.
+        """
+
         bot = connect(bot_id=bot_id)
         try: 
             if new_data['action'] == "press":
@@ -333,11 +369,14 @@ class LoginAPI(MethodView):
     decorators = [limiter.limit(app.config['LOGIN_LIMITER_LIMIT'])]
 
     @bll.arguments(LoginSchema)
-    @bll.response(LoginSchema, code=201)
+    @bll.response(LoginSchema, code=201, description="token created")
     def post(self, new_data: Dict[str, Any]):
-        """Perform a Login"""
+        """Obtain bearer token
 
-        LOG.info("login of remote address: " +  str(get_remote_address()))
+        Obtain a bearer token by providing a valid login password
+        """
+
+        LOG.info("login of remote address: %s", str(get_remote_address()))
 
         candidate = new_data['password']
 
