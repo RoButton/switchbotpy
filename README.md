@@ -1,31 +1,37 @@
 # Switchbot API
 
-One Paragraph of project description goes here
+A REST and Python API for  [SwitchBots](https://www.switch-bot.com/) which allows to control actions, settings and timers.
+
+Among other possibilities, setting up a webserver on a RaspberryPi in combination with an app capable of sending custom HTTP requests (e.g. [HTTP-Shortcuts](https://github.com/Waboodoo/HTTP-Shortcuts) for Android), allows to control SwitchBots by phone outside of the BLE range (without a Hub).
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
+The setup is tested on a RaspberryPi 3 with the Raspbian Buster OS in combination with SwitchBots running firmware 4.4 and 4.5
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
+Install pipenv if you don't have it and then install the environment from the `Pipfile` (from the root directory):
+```
+pip install pipenv
+```
+```
+pipenv install
+```
 
-Say what the step will be
+Afterwards, Flask can be started with the following command:
+```
+pipenv run python src/main.py
+```
+
 
 ### Usage
 
-#### Simple Usage
+#### Python API
 
 
-Use the scanner to find all switchbots in the area:
+Use the scanner to find all SwitchBots in the area:
 ```python
 from switchbot import Scanner
 
@@ -48,11 +54,27 @@ settings = bot.get_settings() # get a dict with the current bot settings
 
 #### Flask REST API
 
-```
-python main.py
-```
+The REST API uses the Python API to communicate with the SwitchBots.
 
 
+The following endpoints are available:
+
+| Name                                       | Method | Endpoint                                          |
+| ------------------------------------------ |--------| ------------------------------------------------- |
+| Login (use password to receive token)      | POST   | ` /switchbot/api/v1/login`                        |
+| Perform Action (press, turn on, turn off)  | POST   | `/switchbot/api/v1/bot/{bot_id}/actions`          |
+| Find all SwitchBots                        | GET    | `/switchbot/api/v1/bots`                          |
+| Get Settings                               | GET    | `/switchbot/api/v1/bot/{bot_id}`                  |
+| Update Settings                            | PUT    | `/switchbot/api/v1/bot/{bot_id}`                  |
+| Get all timers                             | GET    | `/switchbot/api/v1/bot/{bot_id}/timers`           |
+| Add a timer                                | POST   | `/switchbot/api/v1/bot/{bot_id}/timers`           |
+| Update a timer                             | PUT    | `/switchbot/api/v1/bot/{bot_id}/timer/{timer_id}` |
+| Delete Timer                               | DELETE | `/switchbot/api/v1/bot/{bot_id}/timer/{timer_id}` |
+
+
+To get more details about how to use the REST API, start the Flask app with: `pipenv run python src/main.py` and then use the endpoint `/doc/openapi.json` to obtain a [OPEN API](https://www.openapis.org/) specification.
+
+Additionally, I provide a Postman collection in the `/postman` folder which can be imported to try the API. (Start with the Login request to obtain a bearer token which is used for all other endpoints)
 
 ## Deployment
 
