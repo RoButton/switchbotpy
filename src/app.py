@@ -62,6 +62,36 @@ def handle_switchbot_error(error: SwitchbotError):
     else:
         abort(503, message=str(error) + ": please retry")
 
+def update_timer(bot: Bot, timer_id: int, update_data: Dict[str, Any]):
+
+    try:
+        timer, num_timer = bot.get_timer(idx=timer_id)
+
+        if timer is None:
+            abort(404, message="timer not found")
+            
+        data = timer.to_dict()
+
+        for field in ["action", "enabled", "weekdays", "hour", "min"]:
+            if field in update_data:
+                data[field] = update_data[field]
+                
+        timer_updated = StandardTimer(action=Action[data["action"]],
+                                    enabled=data["enabled"], 
+                                    weekdays=data["weekdays"],
+                                    hour=data["hour"],
+                                    min=data["min"])
+
+        bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
+
+    except SwitchbotError as e:
+        handle_switchbot_error(e)
+
+    t = timer_updated.to_dict(timer_id=timer_id)
+    LOG.debug("updated timer: %s", t)
+
+    return t
+
 
 blbs = Blueprint(
     'bots', 'bots', url_prefix=app.config['BASE_URL'] + '/bots',
@@ -254,13 +284,20 @@ class TimerListAPI(MethodView):
     @blts.response(TimerSchema(many=True), description="Timers updated")
     @blts.doc(security=[{"bearerAuth":[]}])
     def patch(self, update_data: List[Dict[str, Any]], bot_id: int):
-        """Update multiple timers of bot by id
+        """Update multiple timers of bot identified by id
         
-        Provide TODO [nku]
+        Provide a list of json objects each containing a timer id to patch the respective timers
         """
-        LOG.debug("new data: %s", str(update_data))
+        LOG.debug("update data: %s", str(update_data))
+        updated_timers = []
+        bot = connect(bot_id=bot_id)
+        for timer_data in update_data:
+            timer_id = timer_data['id']
+            del timer_data['id']
+            t = update_timer(bot=bot, timer_id=timer_id, update_data=timer_data)
+            updated_timers.append(t)
 
-        # TODO [nku] loop over update data, get the timer by id of update data, update the fields and set timer
+        return updated_timers
 
 blta = Blueprint(
     'timer', 'timer', url_prefix= app.config['BASE_URL'] + '/bot/<int:bot_id>/timer',
@@ -283,34 +320,8 @@ class TimerAPI(MethodView):
         
         if timer_id < 0 or timer_id > 4:
             abort(404, message="timer not found")
-
         bot = connect(bot_id=bot_id)
-
-        try:
-            timer, num_timer = bot.get_timer(idx=timer_id)
-
-            if timer is None:
-                abort(404, message="timer not found")
-            
-            data = timer.to_dict()
-
-            for field in ["action", "enabled", "weekdays", "hour", "min"]:
-                if field in update_data:
-                    data[field] = update_data[field]
-                
-            timer_updated = StandardTimer(action=Action[data["action"]],
-                                    enabled=data["enabled"], 
-                                    weekdays=data["weekdays"],
-                                    hour=data["hour"],
-                                    min=data["min"])
-
-            bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
-
-        except SwitchbotError as e:
-            handle_switchbot_error(e)
-
-        t = timer_updated.to_dict(timer_id=timer_id)
-        LOG.debug("updated timer: %s", t)
+        t = update_timer(bot=bot, timer_id=timer_id, update_data=update_data)
         return t
 
     @jwt_required
