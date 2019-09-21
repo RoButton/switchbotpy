@@ -14,7 +14,7 @@ from werkzeug.contrib.fixers import ProxyFix
 
 import lookup
 from configmodule import Config
-from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema
+from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema, PatchTimerSchema
 from switchbot import Bot, Scanner
 from switchbot import LOG as SwitchbotLog
 from switchbot_timer import Action, StandardTimer
