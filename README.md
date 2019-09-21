@@ -65,10 +65,11 @@ The following endpoints are available:
 | Perform Action (press, turn on, turn off)  | POST   | `/switchbot/api/v1/bot/{bot_id}/actions`          |
 | Find all SwitchBots                        | GET    | `/switchbot/api/v1/bots`                          |
 | Get Settings                               | GET    | `/switchbot/api/v1/bot/{bot_id}`                  |
-| Update Settings                            | PUT    | `/switchbot/api/v1/bot/{bot_id}`                  |
+| Update Settings                            | PATCH  | `/switchbot/api/v1/bot/{bot_id}`                  |
 | Get all timers                             | GET    | `/switchbot/api/v1/bot/{bot_id}/timers`           |
 | Add a timer                                | POST   | `/switchbot/api/v1/bot/{bot_id}/timers`           |
-| Update a timer                             | PUT    | `/switchbot/api/v1/bot/{bot_id}/timer/{timer_id}` |
+| Update multiple timers at once             | PATCH  | `/switchbot/api/v1/bot/{bot_id}/timers` |
+| Update a timer                             | PATCH  | `/switchbot/api/v1/bot/{bot_id}/timer/{timer_id}` |
 | Delete Timer                               | DELETE | `/switchbot/api/v1/bot/{bot_id}/timer/{timer_id}` |
 
 

@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import keyring, logging
 from flask import Flask
@@ -14,7 +14,7 @@ from werkzeug.contrib.fixers import ProxyFix
 
 import lookup
 from configmodule import Config
-from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema
+from schema import ActionSchema, BotListSchema, BotSchema, LoginSchema, TimerSchema, PatchTimerSchema
 from switchbot import Bot, Scanner
 from switchbot import LOG as SwitchbotLog
 from switchbot_timer import Action, StandardTimer
@@ -61,6 +61,36 @@ def handle_switchbot_error(error: SwitchbotError):
         abort(403, message="wrong or missing bot password")
     else:
         abort(503, message=str(error) + ": please retry")
+
+def update_timer(bot: Bot, timer_id: int, update_data: Dict[str, Any]):
+
+    try:
+        timer, num_timer = bot.get_timer(idx=timer_id)
+
+        if timer is None:
+            abort(404, message="timer not found")
+            
+        data = timer.to_dict()
+
+        for field in ["action", "enabled", "weekdays", "hour", "min"]:
+            if field in update_data:
+                data[field] = update_data[field]
+                
+        timer_updated = StandardTimer(action=Action[data["action"]],
+                                    enabled=data["enabled"], 
+                                    weekdays=data["weekdays"],
+                                    hour=data["hour"],
+                                    min=data["min"])
+
+        bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
+
+    except SwitchbotError as e:
+        handle_switchbot_error(e)
+
+    t = timer_updated.to_dict(timer_id=timer_id)
+    LOG.debug("updated timer: %s", t)
+
+    return t
 
 
 blbs = Blueprint(
@@ -134,7 +164,7 @@ class BotAPI(MethodView):
     @blb.arguments(BotSchema)
     @blb.response(BotSchema, description="An updated switchbot")
     @blb.doc(security=[{"bearerAuth":[]}])
-    def put(self, update_data: Dict[str, Any], bot_id: int):
+    def patch(self, update_data: Dict[str, Any], bot_id: int):
         """Update bot settings by id
 
         Update bot settings (password, device name, hold time, mode) by id
@@ -161,7 +191,7 @@ class BotAPI(MethodView):
                 
                 if not ('dual_state_mode' in update_data and 'inverse_direction' in update_data): 
                     # if not both are set, need to query the bot for the current setting
-                    d = self.get(bot_id=bot_id)
+                    d = bot.get_settings()
                     dual_state = d["dual_state_mode"]
                     inverse_direction = d["inverse_direction"]
                 
@@ -248,6 +278,27 @@ class TimerListAPI(MethodView):
         LOG.debug("new timer: %s", t)
         return t
 
+
+    @jwt_required
+    @blts.arguments(PatchTimerSchema(many=True))
+    @blts.response(TimerSchema(many=True), description="Timers updated")
+    @blts.doc(security=[{"bearerAuth":[]}])
+    def patch(self, update_data: List[Dict[str, Any]], bot_id: int):
+        """Update multiple timers of bot identified by id
+        
+        Provide a list of json objects each containing a timer id to patch the respective timers
+        """
+        LOG.debug("update data: %s", str(update_data))
+        updated_timers = []
+        bot = connect(bot_id=bot_id)
+        for timer_data in update_data:
+            timer_id = timer_data['id']
+            del timer_data['id']
+            t = update_timer(bot=bot, timer_id=timer_id, update_data=timer_data)
+            updated_timers.append(t)
+
+        return updated_timers
+
 blta = Blueprint(
     'timer', 'timer', url_prefix= app.config['BASE_URL'] + '/bot/<int:bot_id>/timer',
     description='Operations on a timer'
@@ -260,7 +311,7 @@ class TimerAPI(MethodView):
     @blta.arguments(TimerSchema(partial=True))
     @blta.response(TimerSchema, description="A timer")
     @blta.doc(security=[{"bearerAuth":[]}])
-    def put(self, update_data: Dict[str, Any], bot_id: int, timer_id: int):
+    def patch(self, update_data: Dict[str, Any], bot_id: int, timer_id: int):
         """Update a timer by id of a bot identified by id
         
         Provide timer data to update a new timer of a bot identified by id.
@@ -269,34 +320,8 @@ class TimerAPI(MethodView):
         
         if timer_id < 0 or timer_id > 4:
             abort(404, message="timer not found")
-
         bot = connect(bot_id=bot_id)
-
-        try:
-            timer, num_timer = bot.get_timer(idx=timer_id)
-
-            if timer is None:
-                abort(404, message="timer not found")
-            
-            data = timer.to_dict()
-
-            for field in ["action", "enabled", "weekdays", "hour", "min"]:
-                if field in update_data:
-                    data[field] = update_data[field]
-                
-            timer_updated = StandardTimer(action=Action[data["action"]],
-                                    enabled=data["enabled"], 
-                                    weekdays=data["weekdays"],
-                                    hour=data["hour"],
-                                    min=data["min"])
-
-            bot.set_timer(timer_updated, idx=timer_id, num_timer=num_timer)
-
-        except SwitchbotError as e:
-            handle_switchbot_error(e)
-
-        t = timer_updated.to_dict(timer_id=timer_id)
-        LOG.debug("updated timer: %s", t)
+        t = update_timer(bot=bot, timer_id=timer_id, update_data=update_data)
         return t
 
     @jwt_required

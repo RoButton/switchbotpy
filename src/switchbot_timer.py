@@ -107,7 +107,7 @@ class BaseTimer(ABC):
 
     def to_cmd(self, idx: int, num_timer: int):
 
-        if idx < 0 or idx >= num_timer or num_timer > 4:
+        if idx < 0 or idx >= num_timer or num_timer > 5:
             raise ValueError("Illegal Argument: Support for max 5 timers and idx must be < num_timer")
 
         # \x03 for 0'th timer, \x13 for 1st timer, \x23 for 2nd timer
