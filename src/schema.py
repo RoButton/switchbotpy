@@ -36,7 +36,7 @@ class TimerSchema(ma.Schema):
         strict = True
         ordered = True
     
-    id = ma.fields.Int(dump_only=True) 
+    id = ma.fields.Int(validate=ma.validate.Range(min=0, max=4), dump_only=True) 
     mode = ma.fields.String(dump_only=True, validate=ma.validate.OneOf(choices=["standard", "interval"])) # read-only
     
     action = ma.fields.String(validate=ma.validate.OneOf(choices=["press", "turn_on", "turn_off"]), required=True)
@@ -50,7 +50,7 @@ class PatchTimerSchema(ma.Schema):
         strict = True
         ordered = True
 
-    id = ma.fields.Int(required=True)
+    id = ma.fields.Int(validate=ma.validate.Range(min=0, max=4), required=True)
     action = ma.fields.String(validate=ma.validate.OneOf(choices=["press", "turn_on", "turn_off"]))
     enabled = ma.fields.Bool()
     weekdays = ma.fields.List(ma.fields.Int(validate=ma.validate.Range(min=1, max=7)), validate=ma.validate.Length(min=0, max=7))
