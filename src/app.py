@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import keyring, logging
 from flask import Flask
@@ -247,6 +247,20 @@ class TimerListAPI(MethodView):
         t = timer.to_dict(timer_id=n_timer)
         LOG.debug("new timer: %s", t)
         return t
+
+
+    @jwt_required
+    @blts.arguments(TimerSchema(many=True))
+    @blts.response(TimerSchema(many=True), description="Timers updated")
+    @blts.doc(security=[{"bearerAuth":[]}])
+    def put(self, update_data: List[Dict[str, Any]], bot_id: int):
+        """Update multiple timers of bot by id
+        
+        Provide TODO [nku]
+        """
+        LOG.debug("new data: %s", str(updated_timers))
+
+        # TODO [nku] loop over update data, get the timer by id of update data, update the fields and set timer
 
 blta = Blueprint(
     'timer', 'timer', url_prefix= app.config['BASE_URL'] + '/bot/<int:bot_id>/timer',
