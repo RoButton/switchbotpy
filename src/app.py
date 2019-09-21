@@ -250,10 +250,10 @@ class TimerListAPI(MethodView):
 
 
     @jwt_required
-    @blts.arguments(TimerSchema(many=True))
+    @blts.arguments(TimerSchema(many=True, partial=True))
     @blts.response(TimerSchema(many=True), description="Timers updated")
     @blts.doc(security=[{"bearerAuth":[]}])
-    def put(self, update_data: List[Dict[str, Any]], bot_id: int):
+    def patch(self, update_data: List[Dict[str, Any]], bot_id: int):
         """Update multiple timers of bot by id
         
         Provide TODO [nku]
