@@ -134,7 +134,7 @@ class BotAPI(MethodView):
     @blb.arguments(BotSchema)
     @blb.response(BotSchema, description="An updated switchbot")
     @blb.doc(security=[{"bearerAuth":[]}])
-    def put(self, update_data: Dict[str, Any], bot_id: int):
+    def patch(self, update_data: Dict[str, Any], bot_id: int):
         """Update bot settings by id
 
         Update bot settings (password, device name, hold time, mode) by id
@@ -274,7 +274,7 @@ class TimerAPI(MethodView):
     @blta.arguments(TimerSchema(partial=True))
     @blta.response(TimerSchema, description="A timer")
     @blta.doc(security=[{"bearerAuth":[]}])
-    def put(self, update_data: Dict[str, Any], bot_id: int, timer_id: int):
+    def patch(self, update_data: Dict[str, Any], bot_id: int, timer_id: int):
         """Update a timer by id of a bot identified by id
         
         Provide timer data to update a new timer of a bot identified by id.
