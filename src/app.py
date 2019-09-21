@@ -250,7 +250,7 @@ class TimerListAPI(MethodView):
 
 
     @jwt_required
-    @blts.arguments(TimerSchema(many=True, partial=True))
+    @blts.arguments(PatchTimerSchema(many=True, partial=True))
     @blts.response(TimerSchema(many=True), description="Timers updated")
     @blts.doc(security=[{"bearerAuth":[]}])
     def patch(self, update_data: List[Dict[str, Any]], bot_id: int):

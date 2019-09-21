@@ -45,6 +45,9 @@ class TimerSchema(ma.Schema):
     hour = ma.fields.Int(validate=ma.validate.Range(min=0, max=23), required=True)
     min = ma.fields.Int(validate=ma.validate.Range(min=0, max=59), required=True)
 
+class PatchTimerSchema(TimerSchema):
+    id = ma.fields.Int() 
+
 class ActionSchema(ma.Schema):
     class Meta:
         strict = True
