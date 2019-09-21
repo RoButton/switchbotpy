@@ -191,7 +191,7 @@ class BotAPI(MethodView):
                 
                 if not ('dual_state_mode' in update_data and 'inverse_direction' in update_data): 
                     # if not both are set, need to query the bot for the current setting
-                    d = self.get(bot_id=bot_id)
+                    d = bot.get_settings()
                     dual_state = d["dual_state_mode"]
                     inverse_direction = d["inverse_direction"]
                 
