@@ -258,7 +258,7 @@ class TimerListAPI(MethodView):
         
         Provide TODO [nku]
         """
-        LOG.debug("new data: %s", str(updated_timers))
+        LOG.debug("new data: %s", str(update_data))
 
         # TODO [nku] loop over update data, get the timer by id of update data, update the fields and set timer
 
