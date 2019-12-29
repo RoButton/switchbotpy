@@ -75,7 +75,7 @@ The following endpoints are available:
 
 To get more details about how to use the REST API, start the Flask app with: `pipenv run python src/main.py` and then use the endpoint `/doc/openapi.json` to obtain a [OPEN API](https://www.openapis.org/) specification.
 
-Additionally, I provide a Postman collection in the `/postman` folder which can be imported to try the API. (Start with the Login request to obtain a bearer token which is used for all other endpoints)
+Additionally, I provide a Postman collection in the `/postman` folder which can be imported to try the API. (Start with the Login request to obtain a bearer token which is used for all other endpoints. Afterwards use the update settings endpoint to specify the password set with the switchbot app)
 
 ## Deployment
 
