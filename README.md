@@ -25,6 +25,7 @@ Afterwards, Flask can be started with the following command:
 pipenv run python src/main.py
 ```
 
+Note that if you observe the following error: `Can't init device hci0: Connection timed out (110)` while running either of the APIs. Update all packages, reinstall the pipenv and reboot your machine [see these steps](https://github.com/nicolas-kuechler/switchbot/issues/13#issuecomment-617072613).
 
 ### Usage
 
