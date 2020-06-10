@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--hold", help="press hold seconds of switchbot", type=int)
     mode_choices = ['standard', 'dual']
     parser.add_argument("--mode", help="mode of switchbot", choices=mode_choices)
-    parser.add_argument("--inverse", help="inverse state", nargs=0)
+    parser.add_argument("--inverse", help="inverse state", nargs=None)
     args = parser.parse_args()
     if not args.mac:
         args.mac = input("Enter mac address of switchbot: ")
@@ -63,12 +63,12 @@ if __name__ == "__main__":
         except ValueError:
             pass
     if not args.mode:
-        mode = input("Enter switchbot mode [standard/dual]: ")
+        mode = input("Enter switchbot mode [standard/dual] (skip with enter): ")
         if mode in mode_choices:
             args.mode = mode
 
     if not args.inverse:
-        inverse = input("Inverse? [y/n]")
+        inverse = input("Inverse? [y/n] (skip with enter): ")
         inverse = inverse.lower().strip()
         if inverse == 'y':
             args.inverse = True

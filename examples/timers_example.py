@@ -28,11 +28,11 @@ def main(config):
     print("set timers...")
     timer = StandardTimer(action=Action["press"], # Action["turn_on"], Action["turn_off"]  
                           enabled=True,
-                          weekdays=[0, 1, 5],
+                          weekdays=[1, 2, 5],
                           hour=15,
                           min=30)
     try:
-        t_id = int(input("Enter timer id: [0,5)"))
+        t_id = int(input("Enter timer id: [0,5): "))
         if t_id >= 5:
             raise ValueError()
     

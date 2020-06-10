@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setup(
     name='switchbotpy',
     packages=['switchbotpy'],
-    version='1.0.0',
+    version='0.1.6',
     license='MIT',
     description='An API for Switchbots that allows to control actions, settings and timers (also password protected)',
     long_description=long_description,
@@ -14,9 +14,9 @@ setup(
     author='Nicolas Küchler',
     author_email='nico.kuechler@protonmail.com',
     url='https://github.com/RoButton/switchbotpy',
-    download_url='https://github.com/RoButton/switchbotpy/archive/v_10.tar.gz',
+    download_url='https://github.com/RoButton/switchbotpy/archive/v_016.tar.gz',
     keywords=['Switchbot', 'Ble', 'Button', 'Actions', 'Settings', 'Timers'],
-    install_requires=['pygatt',],
+    install_requires=['pygatt', 'pexpect'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
