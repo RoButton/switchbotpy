@@ -14,7 +14,7 @@ The examples folder contains demonstrations how to scan for switchbots, press th
 
 Use the scanner to find all switchbots in the area:
 ```python
-from switchbot import Scanner
+from switchbotpy import Scanner
 
 scanner = Scanner()
 mac_addresses = scanner.scan()
@@ -22,7 +22,7 @@ mac_addresses = scanner.scan()
 
 Use the mac address to create a bot instance providing methods to control the switchbots:
 ```python
-from switchbot import Bot
+from switchbotpy import Bot
 
 bot = Bot(id=bot_id, mac=mac, name=name)
 bot.encrypted(password) # optional (only required in case the bot has a password)

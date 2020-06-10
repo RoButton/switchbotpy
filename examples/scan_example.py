@@ -1,4 +1,4 @@
-from switchbot import Scanner
+from switchbotpy import Scanner
 
 def main():
     """scan for switchbots example"""

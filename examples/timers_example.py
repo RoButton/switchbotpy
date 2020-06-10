@@ -1,8 +1,8 @@
 import argparse
 
-from switchbot import Bot
-from switchbot import StandardTimer
-from switchbot import Action
+from switchbotpy import Bot
+from switchbotpy import StandardTimer
+from switchbotpy import Action
 
 def main(config):
     """timers switchbot example"""

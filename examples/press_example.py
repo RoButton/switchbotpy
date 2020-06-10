@@ -1,6 +1,6 @@
 import argparse
 
-from switchbot import Bot
+from switchbotpy import Bot
 
 def main(config):
     """press switchbot example"""

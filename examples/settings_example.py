@@ -1,9 +1,9 @@
 import argparse
 
-from switchbot import Bot
+from switchbotpy import Bot
 
 def main(config):
-    """press switchbot example"""
+    """settings switchbot example"""
 
     # initialize bot
     bot = Bot(bot_id=0, mac=config.mac, name="bot0")

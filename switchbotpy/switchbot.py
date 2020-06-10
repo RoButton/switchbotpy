@@ -18,8 +18,8 @@ from uuid import UUID
 
 import pygatt
 
-from switchbot_timer import BaseTimer, delete_timer_cmd, parse_timer_cmd
-from switchbot_util import (ActionStatus, SwitchbotError, handle_notification,
+from switchbotpy.switchbot_timer import BaseTimer, delete_timer_cmd, parse_timer_cmd
+from switchbotpy.switchbot_util import (ActionStatus, SwitchbotError, handle_notification,
                             notification_queue)
 
 
