@@ -47,7 +47,7 @@ class Scanner(object):
             if known_dict is not None and device['address'] is not None:
                 # mac of device is known
                 # -> don't need to check characteristics to know if device is a switchbot
-                if known_dict[device['address']]:
+                if device['address'] in known_dict:
                     switchbots.append(device['address'])
             elif self._is_switchbot(mac=device['address']):
                  # mac of device is unknown
