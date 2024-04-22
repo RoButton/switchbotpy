@@ -13,6 +13,7 @@ def handle_notification(handle: int, value: bytes):
 class ActionStatus(Enum):
     complete = 1
     device_busy = 3
+    cmd_not_supported = 5
     device_unreachable = 11
     device_encrypted  = 7
     device_unencrypted = 8
@@ -26,6 +27,8 @@ class ActionStatus(Enum):
             msg = "action complete"
         elif self == ActionStatus.device_busy:
             msg = "switchbot is busy"
+        elif self == ActionStatus.cmd_not_supported:
+            msg = "Device does not support this Command"
         elif self == ActionStatus.device_unreachable:
             msg = "switchbot is unreachable"
         elif self == ActionStatus.device_encrypted:
