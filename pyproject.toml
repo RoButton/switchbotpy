@@ -4,7 +4,7 @@ version = "0.1.9"
 description = "An API for Switchbots that allows to control actions, settings and timers (also password protected)"
 authors = ["Nicolas Küchler <nico.kuechler@protonmail.com>"]
 readme = "README.md"
-license = {text = "MIT License"}
+license = "MIT"
 keywords = ["Switchbot", "Ble", "Button", "Actions", "Settings", "Timers"]
 classifiers=[
     'Development Status :: 3 - Alpha',
