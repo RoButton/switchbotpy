@@ -10,7 +10,7 @@ classifiers=[
     'Development Status :: 3 - Alpha',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python',
-],
+]
 
 [tool.poetry.dependencies]
 python = "^3.6"
