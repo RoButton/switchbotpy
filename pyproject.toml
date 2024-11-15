@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "switchbotpy"
+version = "0.1.9"
+description = "An API for Switchbots that allows to control actions, settings and timers (also password protected)"
+authors = ["Nicolas Küchler <nico.kuechler@protonmail.com>"]
+readme = "README.md"
+license = "MIT"
+keywords = ["Switchbot", "Ble", "Button", "Actions", "Settings", "Timers"]
+classifiers=[
+    'Development Status :: 3 - Alpha',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python',
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+pygatt = "^4.0.5"
+pexpect = "^4.8.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
